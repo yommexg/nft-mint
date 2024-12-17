@@ -1,30 +1,33 @@
-const { network, getNamedAccounts, deployments, ethers } = require("hardhat");
-const { assert, expect } = require("chai");
-const {
-  developmentChains,
-  networkConfig,
-} = require("../../helper-hardhat-config");
+import { RandomIpfsNft } from "../../typechain-types/contracts/RandomIpfsNft";
+import { VRFCoordinatorV2Mock } from "../../typechain-types/@chainlink/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { assert, expect } from "chai";
+import { network, deployments, ethers } from "hardhat";
+import { developmentChains, networkConfig } from "../../helper-hardhat-config";
+import { BigNumber } from "ethers";
 
+// Constants for NFT initialization
 const NAME = "Random IPFS NFT";
 const SYMBOL = "RIN";
 
+// Only run on development chains
 !developmentChains.includes(network.name)
   ? describe.skip
   : describe("Random IPFS NFT Unit Test", () => {
-      let randomIpfsNft,
-        deployer,
-        buyer,
-        vrfCoordinatorV2Mock,
-        event,
-        initialBalance,
-        endingBalance,
-        requestId,
-        mintFee;
+      let randomIpfsNft: RandomIpfsNft;
+      let deployer: SignerWithAddress;
+      let buyer: SignerWithAddress;
+      let vrfCoordinatorV2Mock: VRFCoordinatorV2Mock;
+      let event: any;
+      let initialBalance: BigNumber;
+      let endingBalance: BigNumber;
+      let requestId: BigNumber;
+      let mintFee: BigNumber;
 
-      const chainId = network.config.chainId;
+      const chainId = network.config.chainId!;
 
       beforeEach(async () => {
-        accounts = await ethers.getSigners();
+        const accounts = await ethers.getSigners();
         deployer = accounts[0];
         buyer = accounts[1];
         await deployments.fixture(["all"]);
@@ -58,7 +61,7 @@ const SYMBOL = "RIN";
       });
 
       describe("requestNFT", () => {
-        it("reverts when you dont pay enough eth for NFT", async () => {
+        it("reverts when you don't pay enough ETH for NFT", async () => {
           await expect(randomIpfsNft.requestNft()).to.be.revertedWith(
             "RandomIpfsNft__NeedMoreETHSent"
           );
@@ -74,10 +77,12 @@ const SYMBOL = "RIN";
           });
 
           const receipt = await tx.wait();
-          event = receipt.events.find(
-            (event) => event.event === "NFTRequested"
+          event = receipt.events?.find(
+            (event: any) => event.event === "NFTRequested"
           );
-          requestId = event.args.requestId;
+          if (event) {
+            requestId = event.args.requestId;
+          }
 
           endingBalance = await ethers.provider.getBalance(
             randomIpfsNft.address
@@ -86,20 +91,23 @@ const SYMBOL = "RIN";
 
         it("should request a random number when sufficient ETH is sent", async function () {
           expect(event).to.exist;
-          assert(requestId.toString() > 0);
+          assert(requestId.toString() > "0");
         });
 
         it("should store the sender address correctly in the mapping", async function () {
           const sender = await randomIpfsNft.s_requestIdToSender(requestId);
-          assert(sender, buyer.address);
+          assert.equal(sender, buyer.address);
         });
 
         it("should increase the contract balance by the mint fee", async function () {
-          assert(endingBalance, initialBalance.add(mintFee.toString()));
+          assert.equal(
+            endingBalance.toString(),
+            initialBalance.add(mintFee).toString()
+          );
         });
       });
 
-      describe("fufillRandomWords", () => {
+      describe("fulfillRandomWords", () => {
         it("cannot be called until a request for nft has been made", async () => {
           await expect(
             vrfCoordinatorV2Mock.fulfillRandomWords(0, randomIpfsNft.address)
@@ -110,20 +118,23 @@ const SYMBOL = "RIN";
         });
 
         it("mints NFT after random number is returned", async function () {
-          await new Promise(async (resolve, reject) => {
+          await new Promise<void>(async (resolve, reject) => {
             randomIpfsNft.once(
               "NFTMinted",
-              async (tokenId, dogBreed, newOwner) => {
+              async (
+                tokenId: BigNumber,
+                dogBreed: BigNumber,
+                newOwner: string
+              ) => {
                 try {
                   assert.equal(newOwner, buyer.address);
 
                   const tokenCounter = await randomIpfsNft.getTokenCounter();
-                  assert.equal(tokenCounter.toString(), 1);
+                  assert.equal(tokenCounter.toString(), "1");
 
                   const tokenUri = await randomIpfsNft.tokenURI(
                     tokenId.toString()
                   );
-
                   const dogUri = await randomIpfsNft.getDogTokenUris(
                     dogBreed.toString()
                   );
@@ -133,7 +144,7 @@ const SYMBOL = "RIN";
 
                   resolve();
                 } catch (error) {
-                  console.log(error);
+                  console.error(error);
                   reject(error);
                 }
               }
@@ -145,17 +156,17 @@ const SYMBOL = "RIN";
               });
 
               const receipt = await tx.wait();
-              event = receipt.events.find(
-                (event) => event.event === "NFTRequested"
+              event = receipt.events?.find(
+                (event: any) => event.event === "NFTRequested"
               );
-              requestId = event.args.requestId;
+              requestId = event?.args.requestId;
 
               await vrfCoordinatorV2Mock.fulfillRandomWords(
                 requestId,
                 randomIpfsNft.address
               );
             } catch (error) {
-              console.log(error);
+              console.error(error);
               reject(error);
             }
           });
@@ -164,21 +175,18 @@ const SYMBOL = "RIN";
 
       describe("getBreedFromModdedRng", () => {
         it("should show that NFT minted is a PUG", async function () {
-          // 0 to 9
           const dogBreed = await randomIpfsNft.getBreedFromModdedRng(9);
           assert.equal(dogBreed, 0);
         });
 
-        it("should show that NFT minted is a SHIBA_INU ", async function () {
-          // 10 to  29
+        it("should show that NFT minted is a SHIBA_INU", async function () {
           const dogBreed = await randomIpfsNft.getBreedFromModdedRng(10);
-          assert(dogBreed, 1);
+          assert.equal(dogBreed, 1);
         });
 
-        it("should show that NFT minted is a ST_BENARD", async function () {
-          // 30 to 100
+        it("should show that NFT minted is a ST_BERNARD", async function () {
           const dogBreed = await randomIpfsNft.getBreedFromModdedRng(101);
-          assert(dogBreed, 2);
+          assert.equal(dogBreed, 2);
         });
 
         it("should revert if random number is out of bounds", async function () {

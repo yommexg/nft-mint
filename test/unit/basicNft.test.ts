@@ -1,6 +1,8 @@
-const { network, getNamedAccounts, deployments, ethers } = require("hardhat");
-const { assert } = require("chai");
-const { developmentChains } = require("../../helper-hardhat-config");
+import { BasicNft } from "./../../typechain-types/contracts/BasicNft";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { assert } from "chai";
+import { network, deployments, ethers } from "hardhat";
+import { developmentChains } from "../../helper-hardhat-config";
 
 const NAME = "Dogie";
 const SYMBOL = "DOG";
@@ -8,10 +10,11 @@ const SYMBOL = "DOG";
 !developmentChains.includes(network.name)
   ? describe.skip
   : describe("Basic NFT Unit Test", () => {
-      let basicNft, deployer;
+      let basicNft: BasicNft;
+      let deployer: SignerWithAddress;
 
       beforeEach(async () => {
-        accounts = await ethers.getSigners();
+        const accounts = await ethers.getSigners();
         deployer = accounts[0];
         await deployments.fixture(["basicnft"]);
         basicNft = await ethers.getContract("BasicNft");
@@ -45,7 +48,7 @@ const SYMBOL = "DOG";
 
         it("updates the token counter correctly", async () => {
           const tokenCounter = await basicNft.getTokenCounter();
-          assert.equal(tokenCounter.toString(), 1);
+          assert.equal(tokenCounter.toString(), "1");
         });
 
         it("shows correct balance", async () => {
