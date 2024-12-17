@@ -1,13 +1,10 @@
-const { network, ethers } = require("hardhat");
-const {
-  developmentChains,
-  networkConfig,
-} = require("../helper-hardhat-config");
-const { verify } = require("../utils/verify");
-const {
-  storeImages,
-  storeTokenUriMetadata,
-} = require("../utils/uploadToPinata");
+import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { DeployFunction } from "hardhat-deploy/dist/types";
+import { ethers } from "hardhat";
+import { developmentChains, networkConfig } from "../helper-hardhat-config";
+import { verify } from "../utils/verify";
+
+import { storeImages, storeTokenUriMetadata } from "../utils/uploadToPinata";
 
 const imagesLocation = "./images/randomNft";
 
@@ -31,10 +28,14 @@ let tokenUris = [
 
 const VRF_SUB_FUND_AMOUNT = ethers.utils.parseEther("30");
 
-module.exports = async function ({ getNamedAccounts, deployments }) {
+const randomNftDeploy: DeployFunction = async function ({
+  getNamedAccounts,
+  deployments,
+  network,
+}: HardhatRuntimeEnvironment) {
   const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
-  const chainId = network.config.chainId;
+  const chainId = network.config.chainId!;
 
   // Get the IPFS hashes of our images.
   // 1 with our own IPFS node
@@ -81,7 +82,7 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
     from: deployer,
     args,
     log: true,
-    waitConfirmations: network.config.blockConfirmations || 1,
+    waitConfirmations: chainId ? networkConfig[chainId].blockConfirmations : 1,
   });
 
   if (
@@ -95,30 +96,42 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
   log("------------------------------------------------------------");
 };
 
-module.exports.tags = ["all", "randomipfs", "main"];
+export default randomNftDeploy;
 
+randomNftDeploy.tags = ["all", "randomipfs", "main"];
 async function handleTokensUris() {
-  let tokenUris = [];
+  let tokenUris: string[] = [];
 
-  const { resposnes: imagesUploadResponses, files } = await storeImages(
+  // Ensure storeImages function returns the correct object structure
+  const { responses: imagesUploadResponses, files } = await storeImages(
     imagesLocation
   );
 
-  for (const imagesUploadResponseIndex in imagesUploadResponses) {
+  for (const [index, response] of imagesUploadResponses.entries()) {
+    // Start by copying metadata template
     let tokenUriMetadata = { ...metadataTemplate };
-    tokenUriMetadata.name = files[imagesUploadResponseIndex].replace(
-      ".png",
-      ""
-    );
-    tokenUriMetadata.description = `An adorable ${tokenUriMetadata} pup!`;
-    tokenUriMetadata.image = `ipfs://${imagesUploadResponses[imagesUploadResponseIndex].IpfsHash}`;
+
+    // Use the file name to set the name for the NFT
+    tokenUriMetadata.name = files[index].replace(".png", "");
+
+    // Corrected description to use the name, not the entire metadata object
+    tokenUriMetadata.description = `An adorable ${tokenUriMetadata.name} pup!`;
+
+    // Link to the uploaded image's IPFS hash
+    tokenUriMetadata.image = `ipfs://${response.IpfsHash}`;
+
     console.log(`Uploading ${tokenUriMetadata.name}`);
 
+    // Store the metadata and get the response
     const metadataUploadResponse = await storeTokenUriMetadata(
       tokenUriMetadata
     );
+
+    // Store the URI of the uploaded metadata
     tokenUris.push(`ipfs://${metadataUploadResponse.IpfsHash}`);
   }
+
+  // Log the uploaded token URIs
   console.log("Token URIs Uploaded! They are:");
   console.log(tokenUris);
 

@@ -1,15 +1,11 @@
-require("@nomiclabs/hardhat-waffle");
-require("hardhat-gas-reporter");
-require("@nomiclabs/hardhat-etherscan");
-require("dotenv").config();
-require("solidity-coverage");
-require("hardhat-deploy");
-
-// You need to export an object to set up your config
-// Go to https://hardhat.org/config/ to learn more
-/**
- * @type import('hardhat/config').HardhatUserConfig
- */
+import "@typechain/hardhat";
+import "@nomiclabs/hardhat-waffle";
+import "hardhat-gas-reporter";
+import "@nomiclabs/hardhat-etherscan";
+import "dotenv/config";
+import "solidity-coverage";
+import "hardhat-deploy";
+import { HardhatUserConfig } from "hardhat/config";
 
 const COINMARKETCAP_API_KEY = process.env.COINMARKETCAP_API_KEY || "";
 const SEPOLIA_RPC_URL =
@@ -18,7 +14,7 @@ const SEPOLIA_RPC_URL =
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
 
-module.exports = {
+const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
   networks: {
     hardhat: {
@@ -29,13 +25,11 @@ module.exports = {
       url: SEPOLIA_RPC_URL,
       accounts: [PRIVATE_KEY],
       chainId: 11155111,
-      blockConfirmations: 6,
     },
     // mainnet: {
     //   url: process.env.MAINNET_RPC_URL,
     //   accounts: [PRIVATE_KEY],
     //   chainId: 1,
-    //   blockConfirmations: 6,
     // },
   },
   solidity: {
@@ -51,8 +45,15 @@ module.exports = {
       },
     ],
   },
+
+  typechain: {
+    outDir: "typechain-types",
+    target: "ethers-v5",
+  },
+
   etherscan: {
     apiKey: ETHERSCAN_API_KEY,
+    customChains: [],
   },
   gasReporter: {
     enabled: true,
@@ -71,3 +72,5 @@ module.exports = {
     timeout: 200000, // 200 seconds max for running tests
   },
 };
+
+export default config;

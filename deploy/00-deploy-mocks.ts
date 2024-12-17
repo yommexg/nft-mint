@@ -1,14 +1,20 @@
-const { ethers } = require("ethers");
-const {
+import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { DeployFunction } from "hardhat-deploy/dist/types";
+import { ethers } from "ethers";
+import {
   developmentChains,
   DECIMALS,
   INITIAL_PRICE,
-} = require("../helper-hardhat-config");
+} from "../helper-hardhat-config";
 
 const BASE_FEE = ethers.utils.parseEther("0.25");
 const GAS_PRICE_LINK = 1e9;
 
-module.exports = async ({ getNamedAccounts, deployments }) => {
+const mocks: DeployFunction = async ({
+  getNamedAccounts,
+  deployments,
+  network,
+}: HardhatRuntimeEnvironment) => {
   const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
 
@@ -29,5 +35,6 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     log("--------------------------------------------------------------");
   }
 };
+export default mocks;
 
-module.exports.tags = ["all", "mocks"];
+mocks.tags = ["all", "main", "mocks"];

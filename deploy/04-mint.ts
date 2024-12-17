@@ -1,13 +1,14 @@
-const { network, ethers } = require("hardhat");
-const {
-  developmentChains,
-  networkConfig,
-} = require("../helper-hardhat-config");
-const { verify } = require("../utils/verify");
+import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { DeployFunction } from "hardhat-deploy/dist/types";
+import { ethers } from "hardhat";
+import { developmentChains, networkConfig } from "../helper-hardhat-config";
 
-module.exports = async function ({ getNamedAccounts }) {
+const deployMint: DeployFunction = async function ({
+  getNamedAccounts,
+  network,
+}: HardhatRuntimeEnvironment) {
   const { deployer } = await getNamedAccounts();
-  const address = await ethers.getSigners();
+  await ethers.getSigners();
 
   // Basic NFT
   const basicNft = await ethers.getContract("BasicNft", deployer);
@@ -27,10 +28,10 @@ module.exports = async function ({ getNamedAccounts }) {
   // Random IPFS NFT
   const randomIpfsNft = await ethers.getContract("RandomIpfsNft", deployer);
   const mintFee = await randomIpfsNft.getMintFee();
-  const chainId = network.config.chainId;
+  const chainId = network.config.chainId!;
 
   try {
-    await new Promise(async (resolve, reject) => {
+    await new Promise<void>(async (resolve, reject) => {
       setTimeout(
         () => reject("Timeout: 'NFTMinted' event did not fire"),
         300000
@@ -89,4 +90,6 @@ module.exports = async function ({ getNamedAccounts }) {
   }
 };
 
-module.exports.tags = ["all", "mint"];
+export default deployMint;
+
+deployMint.tags = ["all", "mint"];
